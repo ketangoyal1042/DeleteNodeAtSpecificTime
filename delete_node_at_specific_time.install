@@ -1,0 +1,62 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall hooks for the Crain Core subprofile.
+ */
+
+/**
+ * Implements hook_update_N().
+ *
+ */
+function delete_node_at_specific_time_update_8001() {
+  $field_manager = \Drupal::service('entity_field.manager');
+  $field_storage_manager = \Drupal::service('field_storage_definition.listener');
+  $definition = $field_manager->getFieldStorageDefinitions('node')['deletion_time_field'];
+  $field_storage_manager->onFieldStorageDefinitionCreate($definition);
+}
+
+// function delete_node_at_specific_time_schema(){
+//   $schema['deleted_node_history'] = [
+//     'description' => 'Stores information about deleted nodes.',
+//     'fields' => [
+//       'nid' => [
+//         'type' => 'int',
+//         'unsigned' => TRUE,
+//         'not null' => TRUE,
+//         'description' => 'The node ID.',
+//       ],
+//       'title' => [
+//         'type' => 'varchar',
+//         'length' => 255,
+//         'not null' => TRUE,
+//         'description' => 'The node title.',
+//       ],
+//       'deleted_time' => [
+//         'type' => 'int',
+//         'not null' => TRUE,
+//         'description' => 'The time when the node was deleted.',
+//       ],
+//     ],
+//     'primary key' => ['nid'],
+//     'indexes' => [
+//       'deleted_time' => ['deleted_time'],
+//     ],
+//   ];
+
+//   return $schema;
+// }
+
+function delete_node_at_specific_time_schema(){
+  $schema['deleted_node_history'] = [
+    'description' => 'Stores information about deleted nodes.',
+    'fields' => [
+      'node_data' => [
+        'type' => 'blob',
+        'not null' => TRUE,
+        'description' => 'Serialized data of the deleted node.',
+      ]
+    ],
+  ];
+  return $schema;
+}

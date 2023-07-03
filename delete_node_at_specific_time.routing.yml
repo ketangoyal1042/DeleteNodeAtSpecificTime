@@ -1,0 +1,15 @@
+delete_node_at_specific_time.api_config:
+  path: '/admin/config/delete_node_at_specific_time/deleteform'
+  defaults:
+    _form: '\Drupal\delete_node_at_specific_time\Form\bundle_selection_form'
+    _title: 'Node Deletion Configuration form'
+  requirements:
+    _permission: 'access administration pages'
+
+delete_node_at_specific_time.historylist:
+  path: '/admin/config/delete_node_at_specific_time/DeleteHistoryList'
+  defaults:
+    _controller: 'Drupal\delete_node_at_specific_time\Controller\NodeDeleteHistory::ListOfDeletedNodes'
+    _title: 'Hello From the Dynamic Controller'
+  requirements:
+    _permission: 'administer site configuration'

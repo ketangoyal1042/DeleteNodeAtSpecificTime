@@ -1,0 +1,103 @@
+<?php
+
+/**
+ * @file
+ * Managing to delete node at perticular time
+ */
+
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\node\NodeInterface;
+use Drupal\node\Entity\NodeType;
+use Drupal\node\Entity\Node;
+use Drupal\Component\Serialization\Json;
+
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function delete_node_at_specific_time_entity_base_field_info(EntityTypeInterface $entity_type) {
+  $fields = [];
+      if ($entity_type->id() === 'node') {
+        $fields['deletion_time_field'] = BaseFieldDefinition::create('datetime')
+        ->setLabel(t('Timestamp to delete node'))
+        ->setDescription(t('Field to add specific time when node is get deleted'))
+        ->setSetting('datetime_type', 'datetime')
+        ->setSetting('datetime_format', 'Y-m-d H:i:s')
+        ->setDisplayOptions('form', array(
+            'type' => 'datetime_default',
+            'settings' => array(
+              'display_label' => TRUE,
+            ),
+          ))
+        ->setDisplayConfigurable('form', TRUE);
+    }
+    return $fields;
+  }
+
+
+/**
+ * Implements hook_form_node_form_alter().
+ */
+function delete_node_at_specific_time_form_node_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $node = $form_state->getFormObject()->getEntity();
+  if ($node instanceof \Drupal\node\NodeInterface) {
+    $current_content_type = $node->getType();
+  
+    // Load the configuration to check selected bundles.
+    $config = \Drupal::config('delete_node_at_specific_time_admin.settings');
+    $selected_bundles = $config->get('selected_content_types');
+  
+    // Check if the current content type is selected.
+    if (!in_array($current_content_type, $selected_bundles)) {
+      // Hide the deletion_time_field from the form.
+      $form['deletion_time_field']['#access'] = FALSE;
+    }
+  }
+  }
+
+
+/**
+ * Implements hook_cron().
+ */
+function delete_node_at_specific_time_cron() {
+  $current_time = \Drupal::time()->getRequestTime();
+  $current_datetime = \Drupal::service('date.formatter')->format($current_time, 'custom', 'Y-m-d\TH:i:s');
+  dump($current_datetime);
+
+
+  $query = \Drupal::entityQuery('node')
+    ->condition('deletion_time_field', $current_datetime, '<=')
+    ->condition('status', 1);
+  $nids = $query->execute();
+  $nodes = \Drupal::entityTypeManager()->getStorage('node')->loadMultiple($nids);
+  $nodeCollection = array_combine($nids, $nodes);
+
+  /** @var NodeInterface $node */
+  foreach ($nodeCollection as $nid => $node) {
+    delete_node_at_specific_time_save_delete_node($nid);
+    $node->delete();
+  }
+}
+
+function delete_node_at_specific_time_save_delete_node($nid){
+
+  // Get the node entity.
+  $node = Node::load($nid);
+  dump($node);
+  $serializedNode = Json::encode($node->toArray());
+  $data = Json::decode($serializedNode);
+  dump($data['deletion_time_field'][0]['value']);
+  $data = [
+    // 'nid' => $node->id(),
+    'node_data' => $serializedNode,
+    // 'deleted_time' => \Drupal::time()->getRequestTime(),
+  ];
+
+  \Drupal::database()->insert('deleted_node_history')
+    ->fields($data)
+    ->execute();
+}
